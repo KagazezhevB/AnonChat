@@ -1,29 +1,33 @@
 import telebot
-from telebot import types
-from config import TOKEN
+from constants import TOKEN, SEARCH_COMPANION, STOP_SEARCH
+from database import Database
+from keyboards import search_companion_markup, stop_search_markup
 
-SEARCH_COMPANION = "Поиск собеседника"
-STOP_SEARCH = "Остановить поиск"
 
+db = Database("database/db.db")
 bot = telebot.TeleBot(token=TOKEN)
 
 
 @bot.message_handler(commands=["start"])
 def start_message(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    search_button = types.KeyboardButton(SEARCH_COMPANION)
-    markup.add(search_button)
     bot.send_message(message.chat.id, f"Привет {message.from_user.first_name} {message.from_user.last_name}",
-                     reply_markup=markup)
+                     reply_markup=search_companion_markup)
 
 
 @bot.message_handler(commands=["menu"])
 def menu(message):
+    bot.send_message(message.chat.id, "", reply_markup=search_companion_markup)
+
+
+@bot.message_handler(content_types=["text"])
+def bot_message(message):
     if message.text == SEARCH_COMPANION:
-        markup1 = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        stop_search_button = types.KeyboardButton(STOP_SEARCH)
-        markup1.add(stop_search_button)
-        bot.send_message(message.chat.id, "Поиск собеседника", reply_markup=markup1)
+        db.add_queue(message.chat.id)
+        bot.send_message(message.chat.id, "", reply_markup=stop_search_markup)
+
+    elif message.text == STOP_SEARCH:
+        db.delete_queue(message.chat.id)
+        bot.send_message(message.chat.id, "", reply_markup=search_companion_markup)
 
 
 bot.polling()
